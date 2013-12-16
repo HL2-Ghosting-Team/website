@@ -106,6 +106,7 @@ func contextCreator(c martini.Context, r *http.Request, rawWriter http.ResponseW
 		Req:      r,
 		Response: w,
 		GlobalWG: new(sync.WaitGroup),
+		RenderWG: new(sync.WaitGroup),
 	}
 
 	profile := miniprofiler.NewProfile(w, r, "TODO")
@@ -138,10 +139,15 @@ func contextCreator(c martini.Context, r *http.Request, rawWriter http.ResponseW
 		nc.Infof("Profile: %s", resultURL)
 	}
 
-	nc.createIncludes()
+	nc.includeLock = new(sync.RWMutex)
+	nc.includes = make(map[string]interface{})
+
+	nc.RenderWG.Add(1)
+	go nc.createIncludes()
 
 	c.Next()
 
+	nc.RenderWG.Wait()
 	nc.GlobalWG.Wait()
 
 	if statsEnabled {

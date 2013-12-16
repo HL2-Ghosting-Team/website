@@ -32,6 +32,7 @@ type Context struct {
 	Req      *http.Request // We have to name it this or it conflicts with the appengine.Context interface
 	Response martini.ResponseWriter
 	GlobalWG *sync.WaitGroup
+	RenderWG *sync.WaitGroup
 
 	includes    Includes
 	includeLock *sync.RWMutex
@@ -79,6 +80,7 @@ func (c *Context) Render() {
 	pc, _, _, _ := runtime.Caller(1)
 	f := runtime.FuncForPC(pc)
 
+	c.RenderWG.Wait()
 	c.includeLock.Lock()
 	defer c.includeLock.Unlock()
 
@@ -87,17 +89,11 @@ func (c *Context) Render() {
 
 // This should only be called from the root Context. It is normally called at the beginning of a request.
 func (c *Context) createIncludes() {
-	c.includeLock = new(sync.RWMutex)
-	c.includeLock.Lock()
-	defer c.includeLock.Unlock()
+	defer c.RenderWG.Done()
 
-	includes := make(Includes, 7)
-	includes["Context"] = c
 	c.Step("create includes", func(c *Context) {
-		includes["BootstrapCss"] = BootstrapCss
-		includes["BootstrapJs"] = BootstrapJs
-		includes["Jquery"] = Jquery
-		includes["MiniProfiler"] = c.Context.Includes()
+		c.FillRenderParams(baseRenderParams)
+		c.SetRenderParam("MiniProfiler", c.Context.Includes())
 
 		/*if currentRoute := mux.CurrentRoute(c.Req); currentRoute != nil {
 			includes["CurrentPage"] = currentRoute.GetName() // TODO: Redo this with Martini
@@ -145,13 +141,13 @@ func (c *Context) createIncludes() {
 					})
 				}
 
-				includes["User"] = user
-				includes["UserKey"] = c.Goon.Key(user)
+				c.FillRenderParams(map[string]interface{}{
+					"User":    user,
+					"UserKey": c.Goon.Key(user),
+				})
 			})
 		}
 	})
-
-	c.includes = includes
 }
 
 // Sets one of the render parameters.
@@ -161,6 +157,16 @@ func (c *Context) SetRenderParam(key string, value interface{}) {
 	defer c.includeLock.Unlock()
 
 	c.includes[key] = value
+}
+
+// Fills the render parameters from a map.
+func (c *Context) FillRenderParams(filler Includes) {
+	c.includeLock.Lock()
+	defer c.includeLock.Unlock()
+
+	for key, value := range filler {
+		c.includes[key] = value
+	}
 }
 
 // Gets one of the render parameters.
@@ -212,9 +218,10 @@ func serveError(c appengine.Context, err error, response http.ResponseWriter) {
 type Includes map[string]interface{}
 
 var (
-	BootstrapCss string
-	BootstrapJs  string
-	Jquery       string
+	BootstrapCss     string
+	BootstrapJs      string
+	Jquery           string
+	baseRenderParams Includes
 )
 
 func init() {
@@ -234,5 +241,11 @@ func init() {
 		BootstrapCss = fmt.Sprintf("//netdna.bootstrapcdn.com/bootstrap/%s/css/bootstrap.min.css", bootstrap_ver) // Default Bootstrap
 		BootstrapJs = fmt.Sprintf("//netdna.bootstrapcdn.com/bootstrap/%s/js/bootstrap.min.js", bootstrap_ver)
 		Jquery = fmt.Sprintf("//ajax.googleapis.com/ajax/libs/jquery/%s/jquery.min.js", jquery_ver)
+	}
+
+	baseRenderParams = Includes{
+		"BootstrapCss": BootstrapCss,
+		"BootstrapJs":  BootstrapJs,
+		"Jquery":       Jquery,
 	}
 }
