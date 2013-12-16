@@ -1,0 +1,36 @@
+<!--
+ Copyright 2009 Michael Johnson. All rights reserved.
+ Use of this source code is governed by the MIT
+ license that can be found in the LICENSE file.
+-->
+{{set . "title" "Upload"}}
+{{template "header.html" .}}
+
+<div class="container">
+	<div class="row">
+		<div class="col-md-10 col-md-offset-1">
+			<form class="form-horizontal" role="form" action="{{.UploadURL}}" method="POST" enctype="multipart/form-data">
+				<div class="form-group">
+					<label for="game" class="col-md-2 control-label">Game</label>
+					<div class="col-md-10">
+						<select class="form-control" name="game" id="game">
+							<option value="half-life2"{{if eq .Game "half-life2"}} selected{{end}}>Half-Life 2</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="run" class="col-md-2 control-label">Run</label>
+					<div class="col-md-6">
+						<input type="file" class="form-control" id="run" name="run" required/>
+					</div>
+					<p class="col-md-4 help-block">Your run file. Note: the file can not exceed {{.MaxRunSize}}.</p>
+				</div>
+				<div class="form-group">
+					<button type="submit" class="btn btn-primary">Upload</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+{{template "footer.html" .}}

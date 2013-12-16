@@ -1,0 +1,54 @@
+<!--
+ Copyright 2009 Michael Johnson. All rights reserved.
+ Use of this source code is governed by the MIT
+ license that can be found in the LICENSE file.
+-->
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		{{.ExtraHead}}
+
+		<title>{{.title}} - Ghosting</title>
+
+		<!-- Bootstrap's core CSS -->
+		<link href="{{.BootstrapCss}}" rel="stylesheet"/>
+
+		<!-- Our custom CSS -->
+		<link href="/static/css/ghosting.css" rel="stylesheet"/>
+	</head>
+	<body>
+		<div class="navbar navbar-default navbar-static-top" role="navigation">
+			<div class="container">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand">Ghosting</a>
+				</div>
+				<div class="collapse navbar-collapse">
+					<ul class="nav navbar-nav">
+						<li{{if eq .CurrentPage "index"}} class="active"{{end}}><a href="{{url "index"}}">Home</a></li>
+						<li{{if eq .CurrentPage "runs"}} class="active"{{end}}><a href="{{url "runs"}}">Runs</a></li>
+					</ul>
+					{{if .User}}
+						<ul class="nav navbar-nav navbar-right">
+							<li class="dropdown">
+								<a href="#" class="dropdown-toggle" data-toggle="dropdown"><img alt="{{.User.Email}}'s avatar" src="{{avatarUrl .User 20}}" width="20" height="20"/>&nbsp;{{.User.Email}}&nbsp;<b class="caret"></b></a>
+								<ul class="dropdown-menu">
+									<li><a href="{{url "view-user" .UserKey.Encode}}"><span class="glyphicon glyphicon-user"></span>&nbsp;View&nbsp;profile</a></li>
+									<li class="divider"></li>
+									<li><a href="{{url "logout"}}"><span class="glyphicon glyphicon-log-out"></span>&nbsp;Sign&nbsp;out</a></li>
+								</ul>
+							</li>
+						</ul>
+					{{else}}
+						<a class="btn btn-default navbar-btn navbar-right" href="{{url "login"}}">Sign in</a>
+					{{end}}
+				</div><!--/.nav-collapse -->
+			</div>
+		</div>

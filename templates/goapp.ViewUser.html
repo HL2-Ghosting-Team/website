@@ -1,0 +1,44 @@
+<!--
+ Copyright 2009 Michael Johnson. All rights reserved.
+ Use of this source code is governed by the MIT
+ license that can be found in the LICENSE file.
+-->
+{{set . "title" "View user"}}
+{{template "header.html" .}}
+
+<div class="container">
+	<div class="row">
+		<div class="col-md-2">
+			<div class="thumbnail">
+				<img src="{{avatarUrl .DisplayUser 128}}" alt="{{.DisplayUser.Nickname}}'s avatar" width="128" height="128"/>
+			</div>
+		</div>
+		<div class="col-md-10">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<h3 class="panel-title">Recently uploaded runs</h3>
+				</div>
+				<table class="table">
+					<thead>
+						<tr>
+							<th>Uploaded at</th>
+							<th>Game</th>
+							<th>Total time</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{range .RecentRuns}}
+							<tr class="{{.RunStatus}}">
+								<td>{{.Run.UploadTime}}</td>
+								<td>{{.Run.Game}}</td>
+								<td>{{if eq .RunStatus "active"}}<i>not yet analyzed</i>{{else}}{{if eq .RunStatus "danger"}}<i>analyzing failed</i>{{else}}{{.Run.TotalTime}}{{end}}{{end}}</td>
+								<td><a href="{{url "view-run" .RunKey.Encode}}"><span class="glyphicon glyphicon-info-sign"></span></a>{{if .Run.RunFile}}&nbsp;<a href="{{url "download-run" .RunKey.Encode}}"><span class="glyphicon glyphicon-download"></span></a>{{end}}</td>
+							</tr>
+						{{end}}
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+{{template "footer.html" .}}

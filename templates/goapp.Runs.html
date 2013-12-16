@@ -1,0 +1,56 @@
+<!--
+ Copyright 2009 Michael Johnson. All rights reserved.
+ Use of this source code is governed by the MIT
+ license that can be found in the LICENSE file.
+-->
+{{set . "title" "Runs"}}
+{{template "header.html" .}}
+
+<div class="container">
+	<div class="row">
+		<div class="col-md-3">
+			<form class="form-horizontal" role="form">
+				<div class="form-group">
+					<label class="sr-only" for="game">Game</label>
+					<select class="form-control" name="game" id="game">
+						<option value="half-life2"{{if eq .Game "half-life2"}} selected{{end}}>Half-Life 2</option>
+					</select>
+				</div>
+			</form>
+		</div>
+		<div class="col-md-2 col-md-offset-7">
+			<a class="btn btn-primary btn-block" href="{{url "upload-run"}}"><span class="glyphicon glyphicon-upload"></span>&nbsp;Upload a run</a>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						<th>#</th>
+						<th>Total time</th>
+						<th>Uploader</th>
+						<th>Uploaded at</th>
+					</tr>
+				</thead>
+				<tbody>
+					{{range .Runs}}
+						<tr>
+							<td>{{.Rank}}</td>
+							<td>{{.Run.TotalTime}}</td>
+							<td><img src="{{avatarUrl .User 20}}" alt="{{.User.Nickname}}'s avatar" width="20" height="20"/>&nbsp;<a href="{{url "view-user" .Run.User.Encode}}">{{.User.Nickname}}</a></td>
+							<td>{{.Run.UploadTime}}</td>
+							<td><a href="{{url "view-run" .RunKey}}"><span class="glyphicon glyphicon-info-sign"></span></a>&nbsp;<a href="{{url "download-run" .RunKey}}"><span class="glyphicon glyphicon-download"></span></a></td>
+						</tr>
+					{{end}}
+			</table>
+			<ul class="pager">
+				<!-- TODO: Make this prettier? -->
+				<li class="previous{{if not .Pages.HasPrev}} disabled{{end}}"><a{{if .Pages.HasPrev}} href="{{url "runs"}}?page={{.Pages.Prev}}&game={{.Game}}"{{end}}>Higher ranked</a></li>
+				<li class="next{{if eq .Pages.Next 0}} disabled{{end}}"><a{{if not (eq .Pages.Next 0)}} href="{{url "runs"}}?page={{.Pages.Next}}&game={{.Game}}"{{end}}>Lower ranked</a></li>
+			</ul>
+		</div>
+	</div>
+</div>
+
+{{template "footer.html" .}}
