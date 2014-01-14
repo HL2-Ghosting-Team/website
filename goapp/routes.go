@@ -11,6 +11,8 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -42,6 +44,33 @@ func enableDebugStats(r *http.Request) bool {
 	return strings.HasPrefix(r.URL.Path, miniprofiler.PATH)
 }
 
+func fileExists(filename string) bool {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		return false
+	} else if err != nil {
+		panic(err)
+	}
+	return true
+}
+
+// This traverses the file tree to find the "main" directory. The main directory is the directory with the app.yaml file.
+func findMainDirectory() {
+	startingPath, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	for !fileExists(filepath.Join(startingPath, "app.yaml")) {
+		oldStartingPath := startingPath
+		startingPath = filepath.Dir(startingPath)
+		if startingPath == oldStartingPath {
+			panic("Unable to find main directory (a directory containing app.yaml)")
+		}
+	}
+
+	os.Chdir(startingPath)
+}
+
 func init() {
 	miniprofiler.Position = "right"
 	miniprofiler.ShowControls = false
@@ -50,6 +79,8 @@ func init() {
 	miniprofiler.Enable = enableDebugStats
 	appstats.ShouldRecord = enableDebugStats
 	goon.LogErrors = false
+
+	findMainDirectory()
 
 	var err error
 	if templates, err = template.New("").Funcs(funcs).ParseGlob("templates/*.html"); err != nil {

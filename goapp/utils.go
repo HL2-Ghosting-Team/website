@@ -215,6 +215,20 @@ func serveError(c appengine.Context, err error, response http.ResponseWriter) {
 	}
 }
 
+func getAppEmail(c *Context, user string) string {
+	appIDUnsplit := appengine.AppID(c)
+	split := strings.SplitN(appIDUnsplit, ":", 1)
+
+	var appID string
+	if len(split) > 1 {
+		appID = split[len(split)-1]
+	} else {
+		appID = split[0]
+	}
+
+	return user + "@" + appID + ".appspotmail.com"
+}
+
 type Includes map[string]interface{}
 
 var (
@@ -247,5 +261,6 @@ func init() {
 		"BootstrapCss": BootstrapCss,
 		"BootstrapJs":  BootstrapJs,
 		"Jquery":       Jquery,
+		"AppVersion":   VERSION,
 	}
 }
