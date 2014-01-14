@@ -519,6 +519,9 @@ func ProcessRun(c *Context) {
 			lineNumber++
 		}
 
+		currentMap.Time = time.Duration((lastLine.Time - currentMapStart) * float32(time.Second))
+		analysis.Maps = append(analysis.Maps, currentMap) // Insert the last map
+
 		run.TotalTime = time.Duration(lastLine.Time * float32(time.Second))
 	})
 
