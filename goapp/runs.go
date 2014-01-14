@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/codegangsta/martini"
@@ -132,11 +133,6 @@ func Runs(c *Context) {
 	c.SetRenderParam("Pages", p)
 
 	c.Render()
-}
-
-func RunPOST(c *Context) {
-	// TODO: Implement
-	http.Error(c.Response, "Not yet implemented", http.StatusInternalServerError) // TODO
 }
 
 func UploadRun(c *Context) {
@@ -377,6 +373,84 @@ func DownloadRun(c *Context, params martini.Params) {
 	headers.Set("Pragma", "Public")
 
 	blobstore.Send(c.Response, run.RunFile)
+}
+
+func RunPOST(c *Context, params martini.Params) {
+	if err := c.Req.ParseForm(); err != nil {
+		panic(err)
+	}
+
+	runIDstr := params["id"]
+	runKey, err := datastore.DecodeKey(runIDstr)
+	if err != nil {
+		c.Infof("Unable to decode run key: %s", err)
+		http.Error(c.Response, "Invalid run ID: "+runIDstr, http.StatusBadRequest)
+		return
+	}
+
+	run := &models.Run{ID: runKey.IntID(), User: runKey.Parent()}
+	stop := false // TODO: Make this feel less hacky
+	c.Step("fetch run", func(c *Context) {
+		if err := c.Goon.Get(run); err != nil {
+			if err == datastore.ErrNoSuchEntity {
+				NotFound(c)
+				stop = true
+				return
+			}
+			panic(err)
+		}
+	})
+	if stop {
+		return
+	}
+
+	isUploader := false
+	c.RenderWG.Wait() // We have to wait for the render waitgroup because it sets the "User" parameter. TODO: Unhackify
+	if currentUserInterface, ok := c.GetRenderParam("User"); ok {
+		if currentUser, ok := currentUserInterface.(*models.User); ok {
+			if currentUser.ID == run.User.StringID() {
+				c.Debugf("Is the uploader (%s)", currentUser.ID)
+				isUploader = true
+			} else {
+				c.Debugf("Is not the uploader (uploader:%s != current:%s)", run.User.StringID(), currentUser.ID)
+			}
+		}
+	}
+
+	switch action := c.Req.PostFormValue("action"); action {
+	case "delete":
+		if isUploader {
+			if err := c.RunInTransaction(func(c *Context) error {
+				toDelete := make([]*datastore.Key, 1, 2)
+				toDelete[0] = runKey
+				if run.FullAnalysis != nil {
+					toDelete = append(toDelete, run.FullAnalysis)
+				}
+				if err := c.Goon.DeleteMulti(toDelete); err != nil && err != datastore.ErrNoSuchEntity {
+					return err
+				}
+
+				if err := taskqueue.Delete(c, &taskqueue.Task{Name: runKey.Encode()}, "runs"); err != nil {
+					if !strings.HasSuffix(err.Error(), "(taskqueue: TOMBSTONED_TASK)") { // TODO: This is ridiculously hacky because Google doesn't provide us with any decent way of detecting these errors.
+						return err
+					}
+				}
+
+				return nil
+			}, nil); err != nil {
+				panic(err)
+			}
+			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
+		} else {
+			c.Infof("Attempted to delete a run that they weren't the owner of.")
+			http.Error(c.Response, "You do not own this run.", http.StatusForbidden)
+			return
+		}
+	default:
+		c.Infof("Unknown action: %s", action)
+		http.Error(c.Response, "Unknown action: "+action, http.StatusBadRequest)
+		return
+	}
 }
 
 func failedAnalysis(c *Context, run *models.Run, reason string) {
