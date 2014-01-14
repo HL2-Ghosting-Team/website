@@ -261,5 +261,6 @@ func init() {
 		"BootstrapCss": BootstrapCss,
 		"BootstrapJs":  BootstrapJs,
 		"Jquery":       Jquery,
+		"AppVersion":   VERSION,
 	}
 }
