@@ -409,10 +409,7 @@ func RunPOST(c *Context, params martini.Params) {
 	if currentUserInterface, ok := c.GetRenderParam("User"); ok {
 		if currentUser, ok := currentUserInterface.(*models.User); ok {
 			if currentUser.ID == run.User.StringID() {
-				c.Debugf("Is the uploader (%s)", currentUser.ID)
 				isUploader = true
-			} else {
-				c.Debugf("Is not the uploader (uploader:%s != current:%s)", run.User.StringID(), currentUser.ID)
 			}
 		}
 	}
