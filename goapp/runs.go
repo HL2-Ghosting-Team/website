@@ -8,6 +8,7 @@ import (
 	"appengine"
 	"appengine/blobstore"
 	"appengine/datastore"
+	"appengine/mail"
 	"appengine/taskqueue"
 	"appengine/user"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/codegangsta/martini"
@@ -132,11 +134,6 @@ func Runs(c *Context) {
 	c.SetRenderParam("Pages", p)
 
 	c.Render()
-}
-
-func RunPOST(c *Context) {
-	// TODO: Implement
-	http.Error(c.Response, "Not yet implemented", http.StatusInternalServerError) // TODO
 }
 
 func UploadRun(c *Context) {
@@ -377,6 +374,173 @@ func DownloadRun(c *Context, params martini.Params) {
 	headers.Set("Pragma", "Public")
 
 	blobstore.Send(c.Response, run.RunFile)
+}
+
+func RunPOST(c *Context, params martini.Params) {
+	if err := c.Req.ParseForm(); err != nil {
+		panic(err)
+	}
+
+	runIDstr := params["id"]
+	runKey, err := datastore.DecodeKey(runIDstr)
+	if err != nil {
+		c.Infof("Unable to decode run key: %s", err)
+		http.Error(c.Response, "Invalid run ID: "+runIDstr, http.StatusBadRequest)
+		return
+	}
+
+	run := &models.Run{ID: runKey.IntID(), User: runKey.Parent()}
+	stop := false // TODO: Make this feel less hacky
+	c.Step("fetch run", func(c *Context) {
+		if err := c.Goon.Get(run); err != nil {
+			if err == datastore.ErrNoSuchEntity {
+				NotFound(c)
+				stop = true
+				return
+			}
+			panic(err)
+		}
+	})
+	if stop {
+		return
+	}
+
+	var currentUser *models.User
+	isUploader, isAdmin := false, false
+	c.RenderWG.Wait() // We have to wait for the render waitgroup because it sets the "User" parameter. TODO: Unhackify
+	if currentUserInterface, ok := c.GetRenderParam("User"); ok {
+		if currentUser_, ok := currentUserInterface.(*models.User); ok {
+			if currentUser_.ID == run.User.StringID() {
+				isUploader = true
+			}
+			if currentUser_.Admin {
+				isAdmin = true
+			}
+			currentUser = currentUser_
+		}
+	}
+
+	switch action := c.Req.PostFormValue("action"); action {
+	case "delete":
+		if isUploader {
+			if err := c.RunInTransaction(func(c *Context) error {
+				toDelete := make([]*datastore.Key, 1, 2)
+				toDelete[0] = runKey
+				if run.FullAnalysis != nil {
+					toDelete = append(toDelete, run.FullAnalysis)
+				}
+				if err := c.Goon.DeleteMulti(toDelete); err != nil && err != datastore.ErrNoSuchEntity {
+					return err
+				}
+
+				if err := taskqueue.Delete(c, &taskqueue.Task{Name: runKey.Encode()}, "runs"); err != nil {
+					if !strings.HasSuffix(err.Error(), "(taskqueue: TOMBSTONED_TASK)") { // TODO: This is ridiculously hacky because Google doesn't provide us with any decent way of detecting these errors.
+						return err
+					}
+				}
+
+				if err := blobstore.Delete(c, run.RunFile); err != nil {
+					return err
+				}
+
+				return nil
+			}, nil); err != nil {
+				panic(err)
+			}
+			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
+		} else {
+			c.Infof("Attempted to delete a run that they weren't the owner of.")
+			http.Error(c.Response, "You do not own this run.", http.StatusForbidden)
+			return
+		}
+	case "admin_delete":
+		if isAdmin {
+			reason := c.Req.PostFormValue("reason")
+			if len(reason) <= 0 {
+				http.Error(c.Response, "A reason is required.", http.StatusBadRequest)
+			}
+
+			uploader := &models.User{
+				ID: run.User.StringID(),
+			}
+			c.Step("fetch uploader", func(c *Context) {
+				if err := c.Goon.Get(uploader); err != nil {
+					if err == datastore.ErrNoSuchEntity {
+						uploader = nil
+					}
+					panic(err)
+				}
+			})
+			if uploader == nil {
+				c.Warningf("Unable to fetch run uploader (%s): doesn't exist", run.User.StringID())
+			}
+
+			if err := c.RunInTransaction(func(c *Context) error {
+				toDelete := make([]*datastore.Key, 1, 2)
+				toDelete[0] = runKey
+				if run.FullAnalysis != nil {
+					toDelete = append(toDelete, run.FullAnalysis)
+				}
+				if err := c.Goon.DeleteMulti(toDelete); err != nil && err != datastore.ErrNoSuchEntity {
+					return err
+				}
+
+				if err := taskqueue.Delete(c, &taskqueue.Task{Name: runKey.Encode()}, "runs"); err != nil {
+					if errStr := err.Error(); !strings.HasSuffix(errStr, "(taskqueue: TOMBSTONED_TASK)") && !strings.HasSuffix(errStr, "(taskqueue: UNKNOWN_TASK)") { // TODO: This is ridiculously hacky because Google doesn't provide us with any decent way of detecting these errors.
+						return err
+					}
+				}
+
+				if err := blobstore.Delete(c, run.RunFile); err != nil {
+					return err
+				}
+
+				runURL, err := routerUrl("view-run", runKey.Encode())
+				if err != nil {
+					panic(err)
+				}
+				if err := mail.SendToAdmins(c, &mail.Message{
+					Sender:  getAppEmail(c, "admin-team"),
+					Subject: fmt.Sprintf("Run %s deleted by %s", runKey.Encode(), currentUser.Nickname),
+
+					Body: fmt.Sprintf(`%s/(%s)/(%s) has deleted a run uploaded by (%s). The run previously resided at %s.
+
+Reason given:
+%s`, currentUser.Nickname, currentUser.Email, currentUser.ID, run.User.StringID(), runURL, reason),
+				}); err != nil {
+					return err
+				}
+
+				if uploader != nil && len(uploader.Email) > 0 {
+					if err := mail.Send(c, &mail.Message{
+						Sender:  getAppEmail(c, "admin-team"),
+						To:      []string{uploader.Email},
+						Subject: fmt.Sprintf("Your run has been deleted"),
+
+						Body: fmt.Sprintf("A run uploaded by you has been deleted by an administrator. The reason given was:\n%s", reason),
+					}); err != nil {
+						c.Errorf("Error sending deletion email to user: %s", err)
+					}
+				} else {
+					c.Infof("Didn't send deletion mail to uploader: uploader doesn't exist or has no email address")
+				}
+
+				return nil
+			}, nil); err != nil {
+				panic(err)
+			}
+			c.Warningf("!!! ADMINISTRATOR %s DELETED RUN %s !!!\nREASON:\n%s", currentUser.ID, runKey.Encode(), reason)
+			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
+		} else {
+			c.Infof("Attempted to admin delete a run and they aren't an admin.")
+			http.Error(c.Response, "You must be an administrator to perform this action.", http.StatusForbidden)
+			return
+		}
+	default:
+		c.Infof("Unknown action: %s", action)
+		http.Error(c.Response, "Unknown action: "+action, http.StatusBadRequest)
+		return
+	}
 }
 
 func failedAnalysis(c *Context, run *models.Run, reason string) {
