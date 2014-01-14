@@ -15,5 +15,4 @@ install:
 - goapp version
 script:
 - goapp get -d -v ./goapp
-- goapp test -v -coverprofile=/tmp/coverage.out ./goapp
-- goveralls -v -coverprofile=/tmp/coverage.out -service travis-ci $COVERALLS_TOKEN
+- goapp test -v ./goapp
