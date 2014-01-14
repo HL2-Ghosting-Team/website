@@ -1,0 +1,16 @@
+language: go
+before_install:
+- pushd $HOME
+- wget -q -O "/tmp/appengine.zip" 'http://googleappengine.googlecode.com/files/go_appengine_sdk_linux_amd64-1.8.8.zip'
+- unzip -q -d "${HOME}" "/tmp/appengine.zip"
+- cd "${HOME}/go_appengine"
+- export GAE=$(pwd)
+- popd
+install:
+- cd "$TRAVIS_BUILD_DIR"
+- export GOROOT=$GAE/goroot
+- export PATH=$GAE:$PATH
+- goapp version
+script:
+- goapp get -d -v ./goapp
+- goapp test -v ./goapp
