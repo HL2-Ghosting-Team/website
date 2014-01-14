@@ -16,7 +16,7 @@ import (
 )
 
 // eq reports whether the first argument is equal to
-// any of the remaining arguments.
+// all of the remaining arguments.
 func eq(args ...interface{}) bool {
 	if len(args) == 0 {
 		return false
@@ -25,19 +25,19 @@ func eq(args ...interface{}) bool {
 	switch x := x.(type) {
 	case string, int, int64, byte, float32, float64:
 		for _, y := range args[1:] {
-			if x == y {
-				return true
+			if x != y {
+				return false
 			}
 		}
-		return false
+		return true
 	}
 
 	for _, y := range args[1:] {
-		if reflect.DeepEqual(x, y) {
-			return true
+		if !reflect.DeepEqual(x, y) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func set(renderArgs Includes, key string, value interface{}) template.HTML {
