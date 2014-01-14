@@ -17,6 +17,8 @@ func eqHelper(t *testing.T, expectedEq bool, args ...interface{}) {
 }
 
 func TestEq(t *testing.T) {
+	t.Parallel()
+
 	eqHelper(t, true, 1, 1)
 	eqHelper(t, true, 1, 1, 1)
 	eqHelper(t, false, 1, 1, 3)
