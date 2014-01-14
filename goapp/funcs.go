@@ -12,7 +12,7 @@ import (
 
 	"github.com/ftrvxmtrx/gravatar"
 
-	"github.com/hl2-ghosting-team/website/goapp/models"
+	"github.com/HL2-Ghosting-Team/website/goapp/models"
 )
 
 // eq reports whether the first argument is equal to
