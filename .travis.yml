@@ -1,4 +1,6 @@
 language: go
+env:
+- secure: "MDqparlffx3gG4UCWoiCVEYSjSG9SKAnkSnIh474yYJEtljj1FLHperdhOFpswzwjsjqoO39UhuGx/7TfXzCDOUiw4ZQ321glO/cRbsQqrtRH3POMQaGaCj9ZV7Y9l93BEKL6ksjwWicv4jRcMQ65ezw66Q2oCafc2TrJCy/yvI="
 before_install:
 - pushd $HOME
 - wget -q -O "/tmp/appengine.zip" 'http://googleappengine.googlecode.com/files/go_appengine_sdk_linux_amd64-1.8.8.zip'
@@ -13,4 +15,5 @@ install:
 - goapp version
 script:
 - goapp get -d -v ./goapp
-- goapp test -v ./goapp
+- goapp test -v -coverprofile=/tmp/coverage.out ./goapp
+- goveralls -v -coverprofile=/tmp/coverage.out -service travis-ci $COVERALLS_TOKEN
