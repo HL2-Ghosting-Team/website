@@ -8,6 +8,7 @@ import (
 	"appengine"
 	"appengine/blobstore"
 	"appengine/datastore"
+	"appengine/mail"
 	"appengine/taskqueue"
 	"appengine/user"
 	"fmt"
@@ -404,13 +405,18 @@ func RunPOST(c *Context, params martini.Params) {
 		return
 	}
 
-	isUploader := false
+	var currentUser *models.User
+	isUploader, isAdmin := false, false
 	c.RenderWG.Wait() // We have to wait for the render waitgroup because it sets the "User" parameter. TODO: Unhackify
 	if currentUserInterface, ok := c.GetRenderParam("User"); ok {
-		if currentUser, ok := currentUserInterface.(*models.User); ok {
-			if currentUser.ID == run.User.StringID() {
+		if currentUser_, ok := currentUserInterface.(*models.User); ok {
+			if currentUser_.ID == run.User.StringID() {
 				isUploader = true
 			}
+			if currentUser_.Admin {
+				isAdmin = true
+			}
+			currentUser = currentUser_
 		}
 	}
 
@@ -441,6 +447,87 @@ func RunPOST(c *Context, params martini.Params) {
 		} else {
 			c.Infof("Attempted to delete a run that they weren't the owner of.")
 			http.Error(c.Response, "You do not own this run.", http.StatusForbidden)
+			return
+		}
+	case "admin_delete":
+		if isAdmin {
+			reason := c.Req.PostFormValue("reason")
+			if len(reason) <= 0 {
+				http.Error(c.Response, "A reason is required.", http.StatusBadRequest)
+			}
+
+			uploader := &models.User{
+				ID: run.User.StringID(),
+			}
+			c.Step("fetch uploader", func(c *Context) {
+				if err := c.Goon.Get(uploader); err != nil {
+					if err == datastore.ErrNoSuchEntity {
+						uploader = nil
+					}
+					panic(err)
+				}
+			})
+			if uploader == nil {
+				c.Warningf("Unable to fetch run uploader (%s): doesn't exist", run.User.StringID())
+			}
+
+			if err := c.RunInTransaction(func(c *Context) error {
+				toDelete := make([]*datastore.Key, 1, 2)
+				toDelete[0] = runKey
+				if run.FullAnalysis != nil {
+					toDelete = append(toDelete, run.FullAnalysis)
+				}
+				if err := c.Goon.DeleteMulti(toDelete); err != nil && err != datastore.ErrNoSuchEntity {
+					return err
+				}
+
+				if err := taskqueue.Delete(c, &taskqueue.Task{Name: runKey.Encode()}, "runs"); err != nil {
+					if errStr := err.Error(); !strings.HasSuffix(errStr, "(taskqueue: TOMBSTONED_TASK)") && !strings.HasSuffix(errStr, "(taskqueue: UNKNOWN_TASK)") { // TODO: This is ridiculously hacky because Google doesn't provide us with any decent way of detecting these errors.
+						return err
+					}
+				}
+
+				runURL, err := routerUrl("view-run", runKey.Encode())
+				if err != nil {
+					panic(err)
+				}
+				if err := mail.SendToAdmins(c, &mail.Message{
+					Sender:  currentUser.Email,
+					Subject: fmt.Sprintf("Run %s deleted by %s", runKey.Encode(), currentUser.Nickname),
+
+					Body: fmt.Sprintf(`%s/(%s)/(%s) has deleted a run uploaded by (%s). The run previously resided at %s.
+
+Reason given:
+%s`, currentUser.Nickname, currentUser.Email, currentUser.ID, run.User.StringID(), runURL, reason),
+				}); err != nil {
+					return err
+				}
+
+				if uploader != nil && len(uploader.Email) > 0 {
+					if serviceAccount, err := appengine.ServiceAccount(c); err == nil {
+						if err := mail.Send(c, &mail.Message{
+							Sender:  serviceAccount,
+							To:      []string{uploader.Email},
+							Subject: fmt.Sprintf("Your run has been deleted"),
+
+							Body: fmt.Sprintf("A run uploaded by you has been deleted by an administrator. The reason given was:\n%s", reason),
+						}); err != nil {
+							c.Errorf("Error sending deletion email to user: %s", err)
+						}
+					} else {
+						c.Errorf("Error sending deletion email to user, unable to retrieve service account: %s", err)
+					}
+				}
+
+				return nil
+			}, nil); err != nil {
+				panic(err)
+			}
+			c.Warningf("!!! ADMINISTRATOR %s DELETED RUN %s !!!", currentUser.ID, runKey.Encode())
+			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
+		} else {
+			c.Infof("Attempted to admin delete a run and they aren't an admin.")
+			http.Error(c.Response, "You must be an administrator to perform this action.", http.StatusForbidden)
 			return
 		}
 	default:
