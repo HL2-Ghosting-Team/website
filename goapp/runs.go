@@ -439,6 +439,10 @@ func RunPOST(c *Context, params martini.Params) {
 					}
 				}
 
+				if err := blobstore.Delete(c, run.RunFile); err != nil {
+					return err
+				}
+
 				return nil
 			}, nil); err != nil {
 				panic(err)
@@ -487,12 +491,16 @@ func RunPOST(c *Context, params martini.Params) {
 					}
 				}
 
+				if err := blobstore.Delete(c, run.RunFile); err != nil {
+					return err
+				}
+
 				runURL, err := routerUrl("view-run", runKey.Encode())
 				if err != nil {
 					panic(err)
 				}
 				if err := mail.SendToAdmins(c, &mail.Message{
-					Sender:  currentUser.Email,
+					Sender:  getAppEmail(c, "admin-team"),
 					Subject: fmt.Sprintf("Run %s deleted by %s", runKey.Encode(), currentUser.Nickname),
 
 					Body: fmt.Sprintf(`%s/(%s)/(%s) has deleted a run uploaded by (%s). The run previously resided at %s.
@@ -504,26 +512,24 @@ Reason given:
 				}
 
 				if uploader != nil && len(uploader.Email) > 0 {
-					if serviceAccount, err := appengine.ServiceAccount(c); err == nil {
-						if err := mail.Send(c, &mail.Message{
-							Sender:  serviceAccount,
-							To:      []string{uploader.Email},
-							Subject: fmt.Sprintf("Your run has been deleted"),
+					if err := mail.Send(c, &mail.Message{
+						Sender:  getAppEmail(c, "admin-team"),
+						To:      []string{uploader.Email},
+						Subject: fmt.Sprintf("Your run has been deleted"),
 
-							Body: fmt.Sprintf("A run uploaded by you has been deleted by an administrator. The reason given was:\n%s", reason),
-						}); err != nil {
-							c.Errorf("Error sending deletion email to user: %s", err)
-						}
-					} else {
-						c.Errorf("Error sending deletion email to user, unable to retrieve service account: %s", err)
+						Body: fmt.Sprintf("A run uploaded by you has been deleted by an administrator. The reason given was:\n%s", reason),
+					}); err != nil {
+						c.Errorf("Error sending deletion email to user: %s", err)
 					}
+				} else {
+					c.Infof("Didn't send deletion mail to uploader: uploader doesn't exist or has no email address")
 				}
 
 				return nil
 			}, nil); err != nil {
 				panic(err)
 			}
-			c.Warningf("!!! ADMINISTRATOR %s DELETED RUN %s !!!", currentUser.ID, runKey.Encode())
+			c.Warningf("!!! ADMINISTRATOR %s DELETED RUN %s !!!\nREASON:\n%s", currentUser.ID, runKey.Encode(), reason)
 			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
 		} else {
 			c.Infof("Attempted to admin delete a run and they aren't an admin.")
