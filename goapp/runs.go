@@ -32,7 +32,7 @@ const (
 )
 
 var (
-	top10Query = datastore.NewQuery("Run").Order("TotalTime").Project("TotalTime", "UploadTime").Filter("Ranked =", true).Filter("TotalTime >", 0).Limit(runsPerPage) // Get the top 10 runs for this game
+	top10Query = datastore.NewQuery("Run").Order("TotalTime").Project("TotalTime", "UploadTime").Filter("Ranked =", true).Filter("Deleted =", false).Filter("TotalTime >", 0).Limit(runsPerPage) // Get the top 10 runs for this game
 )
 
 func getGameName(c *Context) byte {

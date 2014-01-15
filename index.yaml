@@ -12,6 +12,7 @@ indexes:
 
 - kind: Run
   properties:
+  - name: Deleted
   - name: Game
   - name: Ranked
   - name: TotalTime
