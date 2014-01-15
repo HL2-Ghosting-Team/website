@@ -23,7 +23,7 @@ import (
 	"github.com/codegangsta/martini"
 	"github.com/nightexcessive/bytesize"
 
-	"github.com/HL2-Ghosting-Team/website/goapp/models"
+	"github.com/HL2-Ghosting-Team/website/models"
 )
 
 const (
@@ -32,21 +32,19 @@ const (
 )
 
 var (
-	validGames  = map[string]string{"half-life2": "Half-Life 2"}
-	defaultGame = "half-life2"
-	top10Query  = datastore.NewQuery("Run").Order("TotalTime").Project("TotalTime", "UploadTime").Filter("TotalTime >", 0).Limit(runsPerPage) // Get the top 10 runs for this game
+	top10Query = datastore.NewQuery("Run").Order("TotalTime").Project("TotalTime", "UploadTime").Filter("Ranked =", true).Filter("TotalTime >", 0).Limit(runsPerPage) // Get the top 10 runs for this game
 )
 
-func getGameName(c *Context) string {
+func getGameName(c *Context) byte {
 	if requestedGame := c.Req.FormValue("game"); len(requestedGame) > 0 {
-		for validGame, _ := range validGames {
-			if validGame == requestedGame {
-				return validGame
+		for gameID, gameName := range models.PrettyGameNames {
+			if gameName == requestedGame {
+				return gameID
 			}
 		}
 	}
 
-	return defaultGame
+	return models.DefaultGame
 }
 
 type exposedRun struct {
@@ -82,7 +80,7 @@ func Runs(c *Context) {
 
 		runs := make([]models.Run, 0, runsPerPage) // TODO: We can't use []*models.Run because goon will hate us. Find a fix for this.
 		c.Step("run query", func(c *Context) {
-			q := top10Query.Offset(page*runsPerPage).Filter("Game =", game)
+			q := top10Query.Offset(page*runsPerPage).Filter("Game =", int(game))
 
 			if _, err := c.Goon.GetAll(q, &runs); err != nil {
 				panic(err)
@@ -114,7 +112,7 @@ func Runs(c *Context) {
 	})
 
 	c.SetRenderParam("Game", game)
-	c.SetRenderParam("PrettyGame", validGames[game])
+	c.SetRenderParam("GameNames", models.PrettyGameNames)
 
 	exposedRuns := make([]*exposedRun, 0, runsPerPage)
 	for run := range runChannel {
@@ -197,7 +195,6 @@ func UploadRunDone(c *Context) {
 	}
 
 	u := user.Current(c)
-	game := getGameName(c)
 
 	var (
 		run    *models.Run
@@ -210,7 +207,8 @@ func UploadRunDone(c *Context) {
 				User:       datastore.NewKey(c, "User", u.ID, 0, nil),
 				UploadTime: time.Now(),
 
-				Game:    game,
+				Game: -1,
+
 				RunFile: runBlob.BlobKey,
 			}
 			if _, err := c.Goon.Put(run); err != nil {
@@ -253,6 +251,7 @@ func ViewRun(c *Context, params martini.Params) {
 		http.Error(c.Response, "Invalid run ID: "+runIDstr, http.StatusBadRequest)
 		return
 	}
+	c.Infof("Run ID: %d", runKey.IntID())
 
 	run := &models.Run{ID: runKey.IntID(), User: runKey.Parent()}
 	stop := false // TODO: Make this feel less hacky
@@ -271,7 +270,6 @@ func ViewRun(c *Context, params martini.Params) {
 	}
 
 	c.SetRenderParam("Run", run)
-	c.SetRenderParam("PrettyGame", validGames[run.Game])
 	c.SetRenderParam("RunKey", c.Goon.Key(run))
 
 	var uploader *models.User
@@ -300,9 +298,9 @@ func ViewRun(c *Context, params martini.Params) {
 	c.SetRenderParam("Uploader", uploader)
 	c.SetRenderParam("UploaderKey", c.Goon.Key(uploader))
 
-	if run.FullAnalysis == nil {
+	if !run.Deleted && run.FullAnalysis == nil {
 		c.SetRenderParam("ExtraHead", template.HTML("<meta http-equiv=\"refresh\" content=\"3\"/>"))
-	} else {
+	} else if run.FullAnalysis != nil {
 		c.Step("fetch full analysis", func(c *Context) {
 			analysis := &models.Analysis{ID: run.FullAnalysis.IntID(), Run: c.Goon.Key(run)}
 			if err := c.Goon.Get(analysis); err == datastore.ErrNoSuchEntity {
@@ -407,7 +405,7 @@ func RunPOST(c *Context, params martini.Params) {
 
 	var currentUser *models.User
 	isUploader, isAdmin := false, false
-	c.RenderWG.Wait() // We have to wait for the render waitgroup because it sets the "User" parameter. TODO: Unhackify
+	c.IncludesWG.Wait()
 	if currentUserInterface, ok := c.GetRenderParam("User"); ok {
 		if currentUser_, ok := currentUserInterface.(*models.User); ok {
 			if currentUser_.ID == run.User.StringID() {
@@ -423,13 +421,14 @@ func RunPOST(c *Context, params martini.Params) {
 	switch action := c.Req.PostFormValue("action"); action {
 	case "delete":
 		if isUploader {
+			analysis, runFile := run.FullAnalysis, run.RunFile
+			run.Deleted, run.RunFile, run.TotalTime, run.FullAnalysis = true, appengine.BlobKey(0), time.Duration(0), nil
 			if err := c.RunInTransaction(func(c *Context) error {
-				toDelete := make([]*datastore.Key, 1, 2)
-				toDelete[0] = runKey
-				if run.FullAnalysis != nil {
-					toDelete = append(toDelete, run.FullAnalysis)
+				if _, err := c.Goon.Put(run); err != nil {
+					return err
 				}
-				if err := c.Goon.DeleteMulti(toDelete); err != nil && err != datastore.ErrNoSuchEntity {
+
+				if err := c.Goon.Delete(analysis); err != nil && err != datastore.ErrNoSuchEntity {
 					return err
 				}
 
@@ -439,7 +438,7 @@ func RunPOST(c *Context, params martini.Params) {
 					}
 				}
 
-				if err := blobstore.Delete(c, run.RunFile); err != nil {
+				if err := blobstore.Delete(c, runFile); err != nil {
 					return err
 				}
 
@@ -447,7 +446,12 @@ func RunPOST(c *Context, params martini.Params) {
 			}, nil); err != nil {
 				panic(err)
 			}
-			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
+
+			runURL, err := routerUrl("view-run", runKey.Encode())
+			if err != nil {
+				panic(err)
+			}
+			http.Redirect(c.Response, c.Req, runURL, http.StatusSeeOther)
 		} else {
 			c.Infof("Attempted to delete a run that they weren't the owner of.")
 			http.Error(c.Response, "You do not own this run.", http.StatusForbidden)
@@ -475,13 +479,14 @@ func RunPOST(c *Context, params martini.Params) {
 				c.Warningf("Unable to fetch run uploader (%s): doesn't exist", run.User.StringID())
 			}
 
+			analysis, runFile := run.FullAnalysis, run.RunFile
+			run.Deleted, run.RunFile, run.TotalTime, run.FullAnalysis = true, appengine.BlobKey(0), time.Duration(0), nil
 			if err := c.RunInTransaction(func(c *Context) error {
-				toDelete := make([]*datastore.Key, 1, 2)
-				toDelete[0] = runKey
-				if run.FullAnalysis != nil {
-					toDelete = append(toDelete, run.FullAnalysis)
+				if _, err := c.Goon.Put(run); err != nil {
+					return err
 				}
-				if err := c.Goon.DeleteMulti(toDelete); err != nil && err != datastore.ErrNoSuchEntity {
+
+				if err := c.Goon.Delete(analysis); err != nil && err != datastore.ErrNoSuchEntity {
 					return err
 				}
 
@@ -491,19 +496,24 @@ func RunPOST(c *Context, params martini.Params) {
 					}
 				}
 
-				if err := blobstore.Delete(c, run.RunFile); err != nil {
+				if err := blobstore.Delete(c, runFile); err != nil {
 					return err
 				}
 
 				runURL, err := routerUrl("view-run", runKey.Encode())
 				if err != nil {
-					panic(err)
+					return err // TODO: Should we even bother returning an error here or should we just panic?
+				}
+				if parsedURL, err := c.Req.URL.Parse(runURL); err != nil {
+					return err
+				} else {
+					runURL = parsedURL.String()
 				}
 				if err := mail.SendToAdmins(c, &mail.Message{
 					Sender:  getAppEmail(c, "admin-team"),
 					Subject: fmt.Sprintf("Run %s deleted by %s", runKey.Encode(), currentUser.Nickname),
 
-					Body: fmt.Sprintf(`%s/(%s)/(%s) has deleted a run uploaded by (%s). The run previously resided at %s.
+					Body: fmt.Sprintf(`%s/(%s)/(%s) has deleted a run uploaded by (%s). The resides at %s.
 
 Reason given:
 %s`, currentUser.Nickname, currentUser.Email, currentUser.ID, run.User.StringID(), runURL, reason),
@@ -517,7 +527,7 @@ Reason given:
 						To:      []string{uploader.Email},
 						Subject: fmt.Sprintf("Your run has been deleted"),
 
-						Body: fmt.Sprintf("A run uploaded by you has been deleted by an administrator. The reason given was:\n%s", reason),
+						Body: fmt.Sprintf("Your run at %s has been deleted by an administrator. The reason given was:\n%s", runURL, reason),
 					}); err != nil {
 						c.Errorf("Error sending deletion email to user: %s", err)
 					}
@@ -530,7 +540,7 @@ Reason given:
 				panic(err)
 			}
 			c.Warningf("!!! ADMINISTRATOR %s DELETED RUN %s !!!\nREASON:\n%s", currentUser.ID, runKey.Encode(), reason)
-			http.Redirect(c.Response, c.Req, "/", http.StatusSeeOther)
+			http.Redirect(c.Response, c.Req, "/runs", http.StatusSeeOther)
 		} else {
 			c.Infof("Attempted to admin delete a run and they aren't an admin.")
 			http.Error(c.Response, "You must be an administrator to perform this action.", http.StatusForbidden)
@@ -573,6 +583,7 @@ func failedAnalysis(c *Context, run *models.Run, reason string) {
 			panic(err)
 		}
 	})
+	c.Infof("Analysis failed: %s", reason)
 }
 
 func ProcessRun(c *Context) {
@@ -625,6 +636,10 @@ func ProcessRun(c *Context) {
 		return
 	}
 
+	run.Game = int(header.Game)
+
+	c.Infof("Header: %#v", header)
+
 	lineNumber := 1
 
 	analysis := &models.Analysis{
@@ -642,8 +657,10 @@ func ProcessRun(c *Context) {
 			Name: runLine.MapName,
 		}
 		currentMapStart := runLine.Time
+		c.Infof("Map name change: %q -> %q", "", currentMap.Name)
 
 		lastPlayerName := runLine.PlayerName
+		c.Infof("Player name change: %q -> %q", "", lastPlayerName)
 		analysis.Players[0] = lastPlayerName
 
 		lastLine := runLine
@@ -654,6 +671,8 @@ func ProcessRun(c *Context) {
 			}
 
 			if len(runLine.MapName) > 0 && currentMap.Name != runLine.MapName {
+				c.Infof("Map name change (%d): %q -> %q", lineNumber, currentMap.Name, runLine.MapName)
+
 				currentMap.Time = time.Duration((runLine.Time - currentMapStart) * float32(time.Second))
 				analysis.Maps = append(analysis.Maps, currentMap)
 
@@ -664,6 +683,8 @@ func ProcessRun(c *Context) {
 			}
 
 			if len(runLine.PlayerName) > 0 && lastPlayerName != runLine.PlayerName {
+				c.Infof("Player name change (%d): %q -> %q", lineNumber, lastPlayerName, runLine.PlayerName)
+
 				found := false
 				for _, name := range analysis.Players {
 					if runLine.PlayerName == name {

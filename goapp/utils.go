@@ -22,17 +22,18 @@ import (
 	"github.com/codegangsta/martini"
 	"github.com/mjibson/goon"
 
-	"github.com/HL2-Ghosting-Team/website/goapp/models"
+	"github.com/HL2-Ghosting-Team/website/models"
 )
 
 type Context struct {
 	*mpg.Context
 
-	ID       string
-	Req      *http.Request // We have to name it this or it conflicts with the appengine.Context interface
-	Response martini.ResponseWriter
-	GlobalWG *sync.WaitGroup
-	RenderWG *sync.WaitGroup
+	ID         string
+	Req        *http.Request // We have to name it this or it conflicts with the appengine.Context interface
+	Response   martini.ResponseWriter
+	IncludesWG *sync.WaitGroup
+	GlobalWG   *sync.WaitGroup
+	RenderWG   *sync.WaitGroup
 
 	includes    Includes
 	includeLock *sync.RWMutex
@@ -45,10 +46,12 @@ func (c *Context) Step(name string, f func(*Context)) {
 		c := &Context{
 			Context: &mc,
 
-			ID:       c.ID,
-			Req:      c.Req,
-			Response: c.Response,
-			GlobalWG: c.GlobalWG,
+			ID:         c.ID,
+			Req:        c.Req,
+			Response:   c.Response,
+			GlobalWG:   c.GlobalWG,
+			RenderWG:   c.RenderWG,
+			IncludesWG: c.IncludesWG,
 
 			includes:    c.includes,
 			includeLock: c.includeLock,
@@ -63,10 +66,12 @@ func (c *Context) RunInTransaction(f func(*Context) error, opts *datastore.Trans
 		return f(&Context{
 			Context: c.Context,
 
-			ID:       c.ID,
-			Req:      c.Req,
-			Response: c.Response,
-			GlobalWG: c.GlobalWG,
+			ID:         c.ID,
+			Req:        c.Req,
+			Response:   c.Response,
+			GlobalWG:   c.GlobalWG,
+			RenderWG:   c.RenderWG,
+			IncludesWG: c.IncludesWG,
 
 			includes:    c.includes,
 			includeLock: c.includeLock,
@@ -89,6 +94,7 @@ func (c *Context) Render() {
 
 // This should only be called from the root Context. It is normally called at the beginning of a request.
 func (c *Context) createIncludes() {
+	defer c.IncludesWG.Done()
 	defer c.RenderWG.Done()
 
 	c.Step("create includes", func(c *Context) {

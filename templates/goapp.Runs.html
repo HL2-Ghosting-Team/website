@@ -13,7 +13,9 @@
 				<div class="form-group">
 					<label class="sr-only" for="game">Game</label>
 					<select class="form-control" name="game" id="game">
-						<option value="half-life2"{{if eq .Game "half-life2"}} selected{{end}}>Half-Life 2</option>
+						{{range $id, $name := .GameNames}}
+							<option value="{{$id}}"{{if eq $.Game $id}} selected{{end}}>{{$name}}</option>
+						{{end}}
 					</select>
 				</div>
 			</form>
