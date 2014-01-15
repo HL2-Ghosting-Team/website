@@ -11,14 +11,6 @@
 		<div class="col-md-10 col-md-offset-1">
 			<form class="form-horizontal" role="form" action="{{.UploadURL}}" method="POST" enctype="multipart/form-data">
 				<div class="form-group">
-					<label for="game" class="col-md-2 control-label">Game</label>
-					<div class="col-md-10">
-						<select class="form-control" name="game" id="game">
-							<option value="half-life2"{{if eq .Game "half-life2"}} selected{{end}}>Half-Life 2</option>
-						</select>
-					</div>
-				</div>
-				<div class="form-group">
 					<label for="run" class="col-md-2 control-label">Run</label>
 					<div class="col-md-6">
 						<input type="file" class="form-control" id="run" name="run" required/>

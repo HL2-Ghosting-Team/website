@@ -12,7 +12,7 @@ import (
 
 	"github.com/ftrvxmtrx/gravatar"
 
-	"github.com/HL2-Ghosting-Team/website/goapp/models"
+	"github.com/HL2-Ghosting-Team/website/models"
 )
 
 // eq reports whether the first argument is equal to
@@ -66,10 +66,19 @@ func getDatastoreKey(c *Context, model interface{}) *datastore.Key {
 	return c.Goon.Key(model)
 }
 
+func prettyGameName(gameID int) string {
+	if name, ok := models.PrettyGameNames[byte(gameID)]; ok {
+		return name
+	}
+
+	return "Unknown"
+}
+
 var funcs = template.FuncMap{
 	"avatarUrl":       avatarUrl,
 	"eq":              eq,
 	"set":             set,
 	"url":             routerUrl,
 	"getDatastoreKey": getDatastoreKey,
+	"prettyGameName":  prettyGameName,
 }

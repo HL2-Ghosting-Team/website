@@ -13,16 +13,30 @@ import (
 	"time"
 )
 
+const CurrentVersion = 0x00
+
+const (
+	GameHL2 = 0x00
+)
+
+const DefaultGame = GameHL2
+
+var PrettyGameNames = map[byte]string{
+	GameHL2: "Half-Life 2",
+}
+
 type Run struct {
-	ID   int64          `datastore:"-" goon:"id"`
-	User *datastore.Key `datastore:"-" goon:"parent"`
+	ID      int64          `datastore:"-" json:"-" goon:"id"`
+	User    *datastore.Key `datastore:"-" json:"uploader" goon:"parent"`
+	Deleted bool           `datastore:",noindex" json:"-"`
+	Ranked  bool           `json:"ranked"`
 
-	UploadTime time.Time
+	UploadTime time.Time `json:"uploaded_at"`
 
-	Game         string
-	RunFile      appengine.BlobKey
-	TotalTime    time.Duration
-	FullAnalysis *datastore.Key
+	Game         int               `json:"game"` // TODO: We'd like to use a single byte here, but App Engine doesn't support single bytes as a datastore type.
+	RunFile      appengine.BlobKey `datastore:",noindex" json:"-"`
+	TotalTime    time.Duration     `json:"-"`
+	FullAnalysis *datastore.Key    `datastore:",noindex" json:"-"`
 }
 
 func init() {
@@ -35,29 +49,33 @@ type MapAnalysis struct {
 }
 
 type Analysis struct {
-	ID  int64          `datastore:"-" goon:"id"`
-	Run *datastore.Key `datastore:"-" goon:"parent"`
+	ID  int64          `datastore:"-" goon:"id" json:"-"`
+	Run *datastore.Key `datastore:"-" goon:"parent" json:"-"`
 
-	RawHeader []byte // TODO: Unhackify.
+	RawHeader []byte     `json:"-"` // TODO: Unhackify.
+	Header    *RunHeader `datastore:"-" json:"header"`
 
-	Maps    []MapAnalysis
-	Players []string
+	Maps    []MapAnalysis `json:"maps"`
+	Players []string      `json:"runners"`
 
-	Fail       bool
-	FailReason string
+	Fail       bool   `json:"failed"`
+	FailReason string `json:"fail_reason"`
 }
 
-func (a *Analysis) Header() *RunHeader {
-	return &RunHeader{
-		a.RawHeader[0],
-		a.RawHeader[1],
-		a.RawHeader[2],
-		a.RawHeader[3],
+func (a *Analysis) MakeHeader() {
+	if a.RawHeader != nil && len(a.RawHeader) >= 9 {
+		a.Header = &RunHeader{
+			Game: a.RawHeader[0],
 
-		a.RawHeader[4],
-		a.RawHeader[5],
-		a.RawHeader[6],
-		a.RawHeader[7],
+			GhostColorR: a.RawHeader[2],
+			GhostColorG: a.RawHeader[3],
+			GhostColorB: a.RawHeader[4],
+
+			TrailColorR: a.RawHeader[5],
+			TrailColorG: a.RawHeader[6],
+			TrailColorB: a.RawHeader[7],
+			TrailLength: a.RawHeader[8],
+		}
 	}
 }
 
@@ -66,7 +84,8 @@ type RunReader struct {
 }
 
 type RunHeader struct {
-	GhostType   byte
+	Game byte
+
 	GhostColorR byte
 	GhostColorG byte
 	GhostColorB byte
@@ -78,7 +97,7 @@ type RunHeader struct {
 }
 
 func (h *RunHeader) MakeRaw() []byte {
-	return []byte{h.GhostType, h.GhostColorR, h.GhostColorG, h.GhostColorB, h.TrailColorR, h.TrailColorG, h.TrailColorB, h.TrailLength}
+	return []byte{h.Game, h.GhostColorR, h.GhostColorG, h.GhostColorB, h.TrailColorR, h.TrailColorG, h.TrailColorB, h.TrailLength}
 }
 
 func (h *RunHeader) TrailDuration() time.Duration {
@@ -104,10 +123,23 @@ func readByte(r io.Reader) (byte, error) {
 	return arr[0], nil
 }
 
+// Verifies the beginning of the file.
+// It always returns false if an error occurs.
+// It will return false if the first byte of the file is not 0xAF or the second byte is not a known verison of the run file format.
 func (r *RunReader) VerifyPreamble() (bool, error) {
-	firstByte, err := readByte(r)
+	if firstByte, err := readByte(r); err != nil {
+		return false, err
+	} else if firstByte != 0xAF {
+		return false, nil
+	}
 
-	return firstByte == 0xAF, err
+	if versionNumber, err := readByte(r); err != nil {
+		return false, err
+	} else if versionNumber != CurrentVersion {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (r *RunReader) ReadHeader() (header *RunHeader, err error) {

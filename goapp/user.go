@@ -10,7 +10,7 @@ import (
 
 	"github.com/codegangsta/martini"
 
-	"github.com/HL2-Ghosting-Team/website/goapp/models"
+	"github.com/HL2-Ghosting-Team/website/models"
 )
 
 var (

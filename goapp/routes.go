@@ -133,11 +133,12 @@ func contextCreator(c martini.Context, r *http.Request, rawWriter http.ResponseW
 	appstatsContext := appstats.NewContext(r)
 
 	nc := &Context{
-		ID:       appengine.RequestID(appstatsContext),
-		Req:      r,
-		Response: w,
-		GlobalWG: new(sync.WaitGroup),
-		RenderWG: new(sync.WaitGroup),
+		ID:         appengine.RequestID(appstatsContext),
+		Req:        r,
+		Response:   w,
+		GlobalWG:   new(sync.WaitGroup),
+		RenderWG:   new(sync.WaitGroup),
+		IncludesWG: new(sync.WaitGroup),
 	}
 
 	profile := miniprofiler.NewProfile(w, r, "TODO")
@@ -174,6 +175,7 @@ func contextCreator(c martini.Context, r *http.Request, rawWriter http.ResponseW
 	nc.includes = make(map[string]interface{})
 
 	nc.RenderWG.Add(1)
+	nc.IncludesWG.Add(1)
 	go nc.createIncludes()
 
 	c.Next()
