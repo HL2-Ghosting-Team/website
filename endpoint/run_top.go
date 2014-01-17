@@ -62,8 +62,10 @@ type GetTopRunsResponse struct {
 func (*GhostingService) GetTopRuns(r *http.Request, req *GetTopRunsRequest, res *GetTopRunsResponse) error {
 	c := utils.NewContext(r)
 
-	if req.Limit <= 0 || req.Limit > 50 {
+	if req.Limit <= 0 {
 		req.Limit = 10
+	} else if req.Limit > 50 {
+		req.Limit = 50
 	}
 
 	res.Limit = req.Limit
