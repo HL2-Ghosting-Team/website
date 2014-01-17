@@ -40,18 +40,18 @@ func (e *ErrInvalidGameID) HTTPStatus() int {
 }
 
 type GetTopRunsRequest struct {
-	Game  string `json:"game" endpoints:"req,desc=The ID, short name, or long name of the game (e.g.: 0, half-life2, Half-Life 2)"`
-	Limit int    `json:"limit" endpoints:"d=10,desc=How many runs to limit the response to. Note: This may not exceed 50."`
+	Game  string `json:"game" endpoints:"req" endpoints_desc:"The ID, short name, or long name of the game (e.g.: 0, half-life2, Half-Life 2)"`
+	Limit int    `json:"limit" endpoints:"d=10" endpoints_desc:"How many runs to limit the response to. Note: This may not exceed 50."`
 }
 
 type internalRun struct {
-	ID         *datastore.Key `json:"id"`
-	UploadTime time.Time      `json:"upload_time"`
-	TotalTime  time.Duration  `json:"total_time_ns"`
+	ID         *datastore.Key `json:"id" endpoints_desc:"The ID of this run"`
+	UploadTime time.Time      `json:"upload_time" endpoints_desc:"The upload time of this run"`
+	TotalTime  time.Duration  `json:"total_time_ns" endpoints_desc:"The total time (in nanoseconds) that this run took"`
 }
 
 type GetTopRunsResponse struct {
-	Runs []*internalRun `json:"items" endpoints:"desc=The returned runs"`
+	Runs []*internalRun `json:"items" endpoints_desc:"The returned runs"`
 }
 
 // Retrieves the top runs for a given game.

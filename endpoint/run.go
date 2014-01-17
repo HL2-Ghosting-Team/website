@@ -52,16 +52,16 @@ func (e *ErrNoSuchRun) HTTPStatus() int {
 }
 
 type GetRunRequest struct {
-	ID string `json:"id" endpoints:"req,desc=The ID of the desired run"`
+	ID string `json:"id" endpoints:"req" endpoints_desc:"The ID of the desired run"`
 }
 
 type GetRunResponse struct {
-	ID      *datastore.Key `json:"id" endpoints:"desc=The ID of the returned run"`
-	Deleted bool           `json:"deleted,omitempty" endpoints:"desc=Whether or not the run has been deleted"`
+	ID      *datastore.Key `json:"id" endpoints_desc:"The ID of the returned run"`
+	Deleted bool           `json:"deleted,omitempty" endpoints_desc:"Whether or not the run has been deleted"`
 
-	Run *models.Run `json:"run" endpoints:"desc=The run's data"`
+	Run *models.Run `json:"run" endpoints_desc:"The run's data"`
 
-	Analysis *models.Analysis `json:"analysis" endpoints:"desc=The analysis of the returned run"`
+	Analysis *models.Analysis `json:"analysis" endpoints_desc:"The analysis of the returned run"`
 }
 
 // Retrieves a run with a specified ID. The method is named ghosting.runs.get
@@ -105,7 +105,7 @@ type GetUploadURLRequest struct {
 }
 
 type GetUploadURLResponse struct {
-	UploadURL string `json:"upload_url" endpoints:"desc=The URL to which the file form should be posted. NOTE: This upload URL is tied to its creator. It should not be shared."`
+	UploadURL string `json:"upload_url" endpoints_desc:"The URL to which the file form should be POSTed. NOTE: This upload URL is tied to its creator. It should not be shared."`
 }
 
 // Retrieves a URL to be used for uploading a run file.

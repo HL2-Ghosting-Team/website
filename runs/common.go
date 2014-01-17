@@ -82,7 +82,7 @@ type RunHeader struct {
 	TrailColorR byte `json:"trail_color_r"`
 	TrailColorG byte `json:"trail_color_g"`
 	TrailColorB byte `json:"trail_color_b"`
-	TrailLength byte `json:"trail_length" endpoints:"desc=The length of the trail (in seconds)"`
+	TrailLength byte `json:"trail_length" endpoints_desc:"The length of the trail (in seconds)"`
 }
 
 // This creates a "raw" version of the run header for use in the datastore. It

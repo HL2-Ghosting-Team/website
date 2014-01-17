@@ -54,12 +54,12 @@ func (*ErrUserLoginRequired) Error() string {
 }
 
 type GetUserRequest struct {
-	ID string `json:"user" endpoints:"d=current,desc=The ID of a user or 'current' for the current user."`
+	ID string `json:"user" endpoints:"d=current" endpoints_desc:"The ID of a user or 'current' for the current user."`
 }
 
 type GetUserResponse struct {
-	ID   *datastore.Key `json:"id" endpoints:"desc=The ID of the returned user"`
-	User *models.User   `json:"user" endpoints:"desc=The retrieved user"`
+	ID   *datastore.Key `json:"id" endpoints_desc:"The ID of the returned user"`
+	User *models.User   `json:"user" endpoints_desc:"The retrieved user"`
 }
 
 func (*GhostingService) GetUser(r *http.Request, req *GetUserRequest, res *GetUserResponse) error {
