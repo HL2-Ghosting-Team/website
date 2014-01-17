@@ -47,6 +47,7 @@ type GetTopRunsRequest struct {
 
 type internalRun struct {
 	ID         *datastore.Key `json:"id" endpoints_desc:"The ID of this run"`
+	Uploader   *datastore.Key `json:"uploader" endpoints_desc:"The ID of the user that uploaded this run"`
 	UploadTime time.Time      `json:"upload_time" endpoints_desc:"The upload time of this run"`
 	TotalTime  time.Duration  `json:"total_time_ns" endpoints_desc:"The total time (in nanoseconds) that this run took"`
 }
@@ -108,6 +109,7 @@ func (*GhostingService) GetTopRuns(r *http.Request, req *GetTopRunsRequest, res 
 		if i < req.Limit {
 			res.Runs = append(res.Runs, &internalRun{
 				ID:         runKey,
+				Uploader:   runKey.Parent(),
 				UploadTime: run.UploadTime,
 				TotalTime:  run.TotalTime,
 			})
