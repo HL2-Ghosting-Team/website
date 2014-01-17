@@ -317,6 +317,7 @@ func ViewRun(c *Context, params martini.Params) {
 			} else if err != nil {
 				panic(err)
 			}
+			analysis.MakeHeader()
 			c.SetRenderParam("FullAnalysis", analysis)
 			if numPlayers := len(analysis.Players); numPlayers == 0 {
 				c.SetRenderParam("PlayerStatement", "There were no players involved.")
