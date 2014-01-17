@@ -12,17 +12,10 @@ indexes:
 
 - kind: Run
   properties:
-  - name: Deleted
   - name: Game
   - name: Ranked
   - name: TotalTime
   - name: UploadTime
-
-- kind: Run
-  properties:
-  - name: Game
-  - name: Ranked
-  - name: TotalTime
 
 - kind: Run
   ancestor: yes

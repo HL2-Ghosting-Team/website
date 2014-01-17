@@ -22,7 +22,7 @@ type Run struct {
 
 	Game         int               `json:"game" endpoints:"desc=The ID of the game that this run was made for"` // TODO: We'd like to use a single byte here, but App Engine doesn't support single bytes as a datastore type.
 	RunFile      appengine.BlobKey `datastore:",noindex" json:"-"`
-	TotalTime    time.Duration     `json:"-"`
+	TotalTime    time.Duration     `json:"total_time_ns"`
 	FullAnalysis *datastore.Key    `datastore:",noindex" json:"-"`
 }
 
