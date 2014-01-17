@@ -22,12 +22,16 @@ handlers:
   static_files: public/favicon.ico
   upload: public/favicon\.ico
 
-- url: /runs/upload
-  login: required
+- url: /internal/process-run
+  login: admin
   script: _go_app
 
-- url: /task/.*
+- url: /internal/upload-done/.*
   login: admin
+  script: _go_app
+
+- url: /runs/upload
+  login: required
   script: _go_app
 
 - url: /.*

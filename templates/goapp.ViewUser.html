@@ -30,8 +30,8 @@
 						{{range .RecentRuns}}
 							<tr class="{{.RunStatus}}">
 								<td>{{.Run.UploadTime}}</td>
-								<td>{{.Run.Game}}</td>
-								<td>{{if eq .RunStatus "active"}}<i>not yet analyzed</i>{{else}}{{if eq .RunStatus "danger"}}<i>analyzing failed</i>{{else}}{{.Run.TotalTime}}{{end}}{{end}}</td>
+								<td>{{prettyGameName .Run.Game}}</td>
+								<td>{{if eq .RunStatus "active"}}<i>not yet analyzed</i>{{else}}{{.Run.TotalTime}}{{end}}</td>
 								<td><a href="{{url "view-run" .RunKey.Encode}}"><span class="glyphicon glyphicon-info-sign"></span></a>{{if .Run.RunFile}}&nbsp;<a href="{{url "download-run" .RunKey.Encode}}"><span class="glyphicon glyphicon-download"></span></a>{{end}}</td>
 							</tr>
 						{{end}}

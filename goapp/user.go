@@ -15,7 +15,7 @@ import (
 
 var (
 	recentlyUploadedPerPage = 10
-	recentlyUploadedQuery   = datastore.NewQuery("Run").Order("-UploadTime").Project("UploadTime", "Game", "TotalTime", "RunFile").Limit(runsPerPage) // Get the top 10 runs for this game
+	recentlyUploadedQuery   = datastore.NewQuery("Run").Order("-UploadTime").Project("UploadTime", "Game", "TotalTime").Limit(recentlyUploadedPerPage) // Get the top 10 runs for this game
 )
 
 type recentRunInternal struct {
@@ -42,6 +42,8 @@ func ViewUser(c *Context, params martini.Params) {
 
 		q := recentlyUploadedQuery.Offset(page * recentlyUploadedPerPage).Ancestor(userKey)
 
+		c.Infof("Fetching recent runs...")
+
 		for it := c.Goon.Run(q); ; {
 			run := new(models.Run)
 			if _, err := it.Next(run); err == datastore.Done {
@@ -49,6 +51,8 @@ func ViewUser(c *Context, params martini.Params) {
 			} else if err != nil {
 				panic(err)
 			}
+
+			c.Infof("Run: %#v", run)
 
 			recentlyUploadedChan <- run
 		}
@@ -80,9 +84,7 @@ func ViewUser(c *Context, params martini.Params) {
 			Run:    upload,
 			RunKey: c.Goon.Key(upload),
 		}
-		if upload.RunFile == "" {
-			internalStruct.RunStatus = "danger"
-		} else if upload.TotalTime == 0 {
+		if upload.TotalTime == 0 {
 			internalStruct.RunStatus = "active"
 		} else {
 			internalStruct.RunStatus = "success"

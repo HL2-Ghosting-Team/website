@@ -14,10 +14,10 @@ func CreateDeletedUser() *User {
 }
 
 type User struct {
-	ID string `datastore:"-" goon:"id"`
+	ID string `datastore:"-" goon:"id" json:"-"`
 
-	Email    string
-	Nickname string
+	Email    string `json:"-"`
+	Nickname string `json:"nickname"`
 
-	Admin bool
+	Admin bool `json:"admin"`
 }

@@ -98,10 +98,10 @@ func init() {
 	routes["index"] = m.Get("/", Index)
 
 	routes["upload-run"] = m.Get("/runs/upload", UploadRun)
-	routes["upload-run-done"] = m.Post("/runs/upload/done", UploadRunDone)
-	routes["task-process-run"] = m.Post("/tasks/run/process", ProcessRun)
+	routes["upload-run-done"] = m.Post("/internal/upload-done/:id", UploadRunDone)
+	routes["task-process-run"] = m.Post("/internal/process-run", ProcessRun)
 
-	routes["runs"] = m.Get("/runs", Runs)
+	routes["runs"] = m.Get("/runs", RankedRuns)
 	routes["download-run"] = m.Get("/runs/:id/download", DownloadRun)
 	routes["view-run"] = m.Get("/runs/:id", ViewRun)
 	routes["update-run"] = m.Post("/runs/:id", RunPOST)

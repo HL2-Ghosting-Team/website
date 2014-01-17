@@ -19,10 +19,15 @@ indexes:
   - name: UploadTime
 
 - kind: Run
+  properties:
+  - name: Game
+  - name: Ranked
+  - name: TotalTime
+
+- kind: Run
   ancestor: yes
   properties:
   - name: UploadTime
     direction: desc
   - name: Game
-  - name: RunFile
   - name: TotalTime

@@ -13,6 +13,7 @@ import (
 	"github.com/ftrvxmtrx/gravatar"
 
 	"github.com/HL2-Ghosting-Team/website/models"
+	"github.com/HL2-Ghosting-Team/website/runs"
 )
 
 // eq reports whether the first argument is equal to
@@ -67,7 +68,7 @@ func getDatastoreKey(c *Context, model interface{}) *datastore.Key {
 }
 
 func prettyGameName(gameID int) string {
-	if name, ok := models.PrettyGameNames[byte(gameID)]; ok {
+	if name, ok := runs.PrettyGameNames[byte(gameID)]; ok {
 		return name
 	}
 
