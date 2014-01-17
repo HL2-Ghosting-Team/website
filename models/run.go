@@ -63,19 +63,21 @@ type Analysis struct {
 }
 
 func (a *Analysis) MakeHeader() {
-	if a.RawHeader != nil && len(a.RawHeader) >= 9 {
+	if a.RawHeader != nil && len(a.RawHeader) >= 8 {
 		a.Header = &RunHeader{
 			Game: a.RawHeader[0],
 
-			GhostColorR: a.RawHeader[2],
-			GhostColorG: a.RawHeader[3],
-			GhostColorB: a.RawHeader[4],
+			GhostColorR: a.RawHeader[1],
+			GhostColorG: a.RawHeader[2],
+			GhostColorB: a.RawHeader[3],
 
-			TrailColorR: a.RawHeader[5],
-			TrailColorG: a.RawHeader[6],
-			TrailColorB: a.RawHeader[7],
-			TrailLength: a.RawHeader[8],
+			TrailColorR: a.RawHeader[4],
+			TrailColorG: a.RawHeader[5],
+			TrailColorB: a.RawHeader[6],
+			TrailLength: a.RawHeader[7],
 		}
+	} else {
+		panic("Attempted to make a header while no suitable RawHeader existed.")
 	}
 }
 
