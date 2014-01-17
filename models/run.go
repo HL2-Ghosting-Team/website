@@ -76,8 +76,6 @@ func (a *Analysis) MakeHeader() {
 			TrailColorB: a.RawHeader[6],
 			TrailLength: a.RawHeader[7],
 		}
-	} else {
-		panic("Attempted to make a header while no suitable RawHeader existed.")
 	}
 }
 
