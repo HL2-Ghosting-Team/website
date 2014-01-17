@@ -40,9 +40,9 @@ func (e *ErrInvalidGameID) HTTPStatus() int {
 }
 
 type GetTopRunsRequest struct {
-	Game   string `json:"game" endpoints:"req" endpoints_desc:"The ID, short name, or long name of the game (e.g.: 0, half-life2, Half-Life 2)"`
-	Limit  int    `json:"limit" endpoints:"d=10" endpoints_desc:"How many runs to limit the response to. Note: This may not exceed 50."`
-	Cursor string `json:"cursor" endpoints_desc:"Cursor representing the next page"`
+	Game   string `json:"game,omitempty" endpoints:"req" endpoints_desc:"The ID, short name, or long name of the game (e.g.: 0, half-life2, Half-Life 2)"`
+	Limit  int    `json:"limit,omitempty" endpoints:"d=10" endpoints_desc:"How many runs to limit the response to. Note: This may not exceed 50."`
+	Cursor string `json:"cursor,omitempty" endpoints_desc:"Cursor representing the next page"`
 }
 
 type internalRun struct {
@@ -52,8 +52,10 @@ type internalRun struct {
 }
 
 type GetTopRunsResponse struct {
-	Runs       []*internalRun `json:"items" endpoints_desc:"The returned runs"`
-	NextCursor string         `json:"next,omitempty" endpoints_desc:"The cursor for the next set of results"`
+	Runs     []*internalRun     `json:"items" endpoints_desc:"The returned runs"`
+	RunCount int                `json:"currentItemCount"`
+	Limit    int                `json:"itemsPerPage"`
+	Next     *GetTopRunsRequest `json:"next,omitempty" endpoints_desc:"The parameters for the next set of runs"`
 }
 
 // Retrieves the top runs for a given game.
@@ -64,12 +66,14 @@ func (*GhostingService) GetTopRuns(r *http.Request, req *GetTopRunsRequest, res 
 		req.Limit = 10
 	}
 
+	res.Limit = req.Limit
+
 	gameID, ok := runs.DetermineGame(req.Game)
 	if !ok {
 		return &ErrInvalidGameID{ID: req.Game}
 	}
 
-	_, ok = runs.PrettyGameNames[gameID]
+	prettyGame, ok := runs.PrettyGameNames[gameID]
 	if !ok {
 		return &ErrInvalidGameID{ID: req.Game}
 	}
@@ -115,8 +119,13 @@ func (*GhostingService) GetTopRuns(r *http.Request, req *GetTopRunsRequest, res 
 			hasNext = true
 		}
 	}
+	res.RunCount = len(res.Runs)
 	if hasNext {
-		res.NextCursor = lastCursor
+		res.Next = &GetTopRunsRequest{
+			Game:   prettyGame,
+			Limit:  req.Limit,
+			Cursor: lastCursor,
+		}
 	}
 
 	return nil
