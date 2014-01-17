@@ -40,8 +40,9 @@ func (e *ErrInvalidGameID) HTTPStatus() int {
 }
 
 type GetTopRunsRequest struct {
-	Game  string `json:"game" endpoints:"req" endpoints_desc:"The ID, short name, or long name of the game (e.g.: 0, half-life2, Half-Life 2)"`
-	Limit int    `json:"limit" endpoints:"d=10" endpoints_desc:"How many runs to limit the response to. Note: This may not exceed 50."`
+	Game   string `json:"game" endpoints:"req" endpoints_desc:"The ID, short name, or long name of the game (e.g.: 0, half-life2, Half-Life 2)"`
+	Limit  int    `json:"limit" endpoints:"d=10" endpoints_desc:"How many runs to limit the response to. Note: This may not exceed 50."`
+	Cursor string `json:"cursor" endpoints_desc:"Cursor representing the next page"`
 }
 
 type internalRun struct {
@@ -51,7 +52,8 @@ type internalRun struct {
 }
 
 type GetTopRunsResponse struct {
-	Runs []*internalRun `json:"items" endpoints_desc:"The returned runs"`
+	Runs       []*internalRun `json:"items" endpoints_desc:"The returned runs"`
+	NextCursor string         `json:"next,omitempty" endpoints_desc:"The cursor for the next set of results"`
 }
 
 // Retrieves the top runs for a given game.
@@ -72,9 +74,23 @@ func (*GhostingService) GetTopRuns(r *http.Request, req *GetTopRunsRequest, res 
 		return &ErrInvalidGameID{ID: req.Game}
 	}
 
+	var (
+		lastCursor string
+		hasNext    bool
+	)
 	res.Runs = make([]*internalRun, 0, req.Limit)
-	q := topQuery.Limit(req.Limit).Filter("Game =", int(gameID))
-	for t := c.Goon.Run(q); ; {
+
+	q := topQuery.Limit(req.Limit+1).Filter("Game =", int(gameID))
+
+	if len(req.Cursor) > 0 {
+		if cursor, err := datastore.DecodeCursor(req.Cursor); err != nil {
+			return new(ErrCursorInvalid)
+		} else {
+			q = q.Start(cursor)
+		}
+	}
+
+	for t, i := c.Goon.Run(q), 0; ; i++ {
 		var run models.Run
 		runKey, err := t.Next(&run)
 		if err == datastore.Done {
@@ -83,11 +99,24 @@ func (*GhostingService) GetTopRuns(r *http.Request, req *GetTopRunsRequest, res 
 			panic(err)
 		}
 
-		res.Runs = append(res.Runs, &internalRun{
-			ID:         runKey,
-			UploadTime: run.UploadTime,
-			TotalTime:  run.TotalTime,
-		})
+		if i < req.Limit {
+			res.Runs = append(res.Runs, &internalRun{
+				ID:         runKey,
+				UploadTime: run.UploadTime,
+				TotalTime:  run.TotalTime,
+			})
+
+			if lastCursor_, err := t.Cursor(); err != nil {
+				panic(err)
+			} else {
+				lastCursor = lastCursor_.String()
+			}
+		} else {
+			hasNext = true
+		}
+	}
+	if hasNext {
+		res.NextCursor = lastCursor
 	}
 
 	return nil

@@ -20,3 +20,15 @@ func (*ErrLoginRequired) Error() string {
 func (*ErrLoginRequired) HTTPStatus() int {
 	return http.StatusUnauthorized
 }
+
+// An error returned whenever a cursor is given, but is not in a valid format.
+type ErrCursorInvalid struct {
+}
+
+func (*ErrCursorInvalid) Error() string {
+	return "The given cursor is invalid."
+}
+
+func (*ErrCursorInvalid) HTTPStatus() int {
+	return http.StatusBadRequest
+}
