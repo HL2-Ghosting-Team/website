@@ -58,8 +58,12 @@ type GetUserRequest struct {
 }
 
 type GetUserResponse struct {
-	ID   *datastore.Key `json:"id" endpoints_desc:"The ID of the returned user"`
-	User *models.User   `json:"user" endpoints_desc:"The retrieved user"`
+	ID *datastore.Key `json:"id" endpoints_desc:"The ID of the returned user"`
+
+	Nickname string `json:"nickname"`
+	Admin    bool   `json:"admin"`
+
+	Avatar string `json:"avatar"`
 }
 
 func (*GhostingService) GetUser(r *http.Request, req *GetUserRequest, res *GetUserResponse) error {
@@ -89,15 +93,17 @@ func (*GhostingService) GetUser(r *http.Request, req *GetUserRequest, res *GetUs
 		res.ID = userKey
 	}
 
-	res.User = &models.User{
+	user := &models.User{
 		ID: res.ID.StringID(),
 	}
-	if err := c.Goon.Get(res.User); err == datastore.ErrNoSuchEntity {
+	if err := c.Goon.Get(user); err == datastore.ErrNoSuchEntity {
 		res.ID = nil
 		return new(ErrNoSuchUser)
 	} else if err != nil {
 		panic(err)
 	}
+
+	res.Admin, res.Nickname, res.Avatar = user.Admin, user.Nickname, user.Avatar()
 
 	return nil
 }

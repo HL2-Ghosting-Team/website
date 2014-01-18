@@ -4,6 +4,10 @@
 
 package models
 
+import (
+	"github.com/ftrvxmtrx/gravatar"
+)
+
 // Creates a fake user to use in substitute of a user that's been deleted.
 func CreateDeletedUser() *User {
 	return &User{
@@ -20,4 +24,8 @@ type User struct {
 	Nickname string `json:"nickname"`
 
 	Admin bool `json:"admin"`
+}
+
+func (u *User) Avatar() string {
+	return gravatar.GetAvatarURL("https", gravatar.EmailHash(u.Email), gravatar.DefaultIdentIcon, gravatar.RatingPG).String()
 }

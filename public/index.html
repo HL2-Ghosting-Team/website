@@ -1,0 +1,67 @@
+<!--
+ Copyright 2009 Michael Johnson. All rights reserved.
+ Use of this source code is governed by the MIT
+ license that can be found in the LICENSE file.
+-->
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>Ghosting</title>
+
+		<!-- Bootstrap's core CSS -->
+		<link href="/static/css/bootstrap-3.0.2.css" rel="stylesheet"/>
+
+		<!-- Our custom CSS -->
+		<link href="/static/css/ghosting.css" rel="stylesheet"/>
+
+		<script src="/static/js/lib/jquery-2.0.3.js"></script>
+		<script src="/static/js/lib/bootstrap-3.0.2.js"></script>
+		<script src="/static/js/lib/angular-1.2.9/angular.js"></script>
+		<script src="/static/js/lib/angular-1.2.9/angular-route.js"></script>
+		<script src="/static/js/lib/angular-1.2.9/angular-resource.js"></script>
+		<script src="/static/js/app.js"></script>
+		<script src="/static/js/controllers.js"></script>
+		<script src="/static/js/services.js"></script>
+		<script src="https://apis.google.com/js/client.js?onload=initialize"></script>
+	</head>
+	<body>
+		<div class="navbar navbar-inverse navbar-static-top" role="navigation">
+			<div class="container">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand">Ghosting</a>
+				</div>
+				<div class="collapse navbar-collapse">
+					<ul class="nav navbar-nav">
+						<li><a href="/">Home</a></li>
+						<li><a href="/runs">Runs</a></li>
+					</ul>
+					<ul class="nav navbar-nav navbar-right ng-hide" ng-show="auth.user.signed_in">
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown"><img alt="{{auth.user.email}}'s avatar" ng-src="{{auth.user.avatar}}&s=20" width="20" height="20"/>&nbsp;{{auth.user.nickname}}&nbsp;<b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a ng-href="/user/{{auth.user.id}}"><span class="glyphicon glyphicon-user"></span>&nbsp;View&nbsp;profile</a></li>
+								<li class="divider"></li>
+								<li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span>&nbsp;Sign&nbsp;out</a></li>
+							</ul>
+						</li>
+					</ul>
+					<a class="btn btn-default navbar-btn navbar-right ng-hide" ng-hide="!auth.loaded || auth.user.signed_in" ng-click="auth.authenticate()">Sign in</a>
+				</div><!--/.nav-collapse -->
+			</div>
+		</div>
+		<ng-view>
+			<div class="container">
+				<h1>Loading...</h1>
+				<p>It takes a moment to load the resources that we use.</p>
+			</div>
+		</div>
+	</body>
+</html>

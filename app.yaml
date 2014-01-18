@@ -15,6 +15,18 @@ automatic_scaling:
   max_concurrent_requests: 25
 
 handlers:
+
+- url: /_ah/spi/.*
+  script: _go_app
+
+- url: /internal/upload-done/.*
+  login: admin
+  script: _go_app
+
+- url: /internal/process-run
+  login: admin
+  script: _go_app
+
 - url: /static
   static_dir: public
 
@@ -22,20 +34,6 @@ handlers:
   static_files: public/favicon.ico
   upload: public/favicon\.ico
 
-- url: /internal/process-run
-  login: admin
-  script: _go_app
-
-- url: /internal/upload-done/.*
-  login: admin
-  script: _go_app
-
-- url: /runs/upload
-  login: required
-  script: _go_app
-
 - url: /.*
-  script: _go_app
-
-- url: /_ah/spi/.*
-  script: _go_app
+  static_files: public/index.html
+  upload: public/index\.html
