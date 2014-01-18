@@ -17,6 +17,7 @@ ghostingServices.factory('Auth', [function() {
 	
 	authenticateCallback = function($scope) {
 		return function() {
+			console.log("authenticateCallback", arguments);
 			return library.checkAuthenticated($scope);
 		}
 	};
@@ -64,14 +65,6 @@ ghostingServices.factory('Auth', [function() {
 					$scope.$apply();
 				}
 			});
-		},
-		'unauthenticate': function($scope) {
-			gapi.auth.setToken(null);
-			$scope.auth.user = {
-				'signed_in': false
-			}
-			$scope.auth.loaded = true;
-			$scope.$apply();
 		}
 	};
 

@@ -49,11 +49,11 @@
 							<ul class="dropdown-menu">
 								<li ng-class="{active: isActive('/user/'+auth.user.id)}"><a ng-href="/user/{{auth.user.id}}"><span class="glyphicon glyphicon-user"></span>&nbsp;View&nbsp;profile</a></li>
 								<li class="divider"></li>
-								<li ng-class="{active: isActive('/logout')}"><a href="/logout"><span class="glyphicon glyphicon-log-out"></span>&nbsp;Sign&nbsp;out</a></li>
+								<li><a href="https://accounts.google.com/logout"><span class="glyphicon glyphicon-log-out"></span>&nbsp;Sign&nbsp;out</a></li>
 							</ul>
 						</li>
 					</ul>
-					<a class="btn btn-default navbar-btn navbar-right ng-hide" ng-hide="!auth.loaded || auth.user.signed_in" ng-click="auth.authenticate()">Sign in</a>
+					<a class="btn btn-default navbar-btn navbar-right ng-hide" ng-hide="!auth.loaded || auth.user.signed_in" ng-click="signIn()">Sign in</a>
 				</div><!--/.nav-collapse -->
 			</div>
 		</div>

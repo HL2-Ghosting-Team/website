@@ -14,10 +14,6 @@ ghostingApp.config(['$routeProvider', '$locationProvider',
 			when('/', {
 				'templateUrl': '/static/partials/index.html'
 			}).
-			when('/logout', {
-				'templateUrl': '/static/partials/logout.html',
-				'controller': 'LogoutCtrl'
-			}).
 			otherwise({
 				'templateUrl': '/static/partials/not_found.html'
 			});
