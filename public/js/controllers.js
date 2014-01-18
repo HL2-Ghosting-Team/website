@@ -10,14 +10,6 @@ ghostingControllers.controller('HeaderCtrl', ['$scope', 'Auth', '$location', fun
     };
 }]);
 
-ghostingControllers.controller('IndexCtrl', ['$scope', function($scope) {
-	
-}]);
-
-ghostingControllers.controller('NotFoundCtrl', ['$scope', function($scope) {
-	
-}]);
-
 ghostingControllers.controller('LogoutCtrl', ['$scope', '$location', function($scope, $location) {
 	var takeAction = function() {
 		if($scope.auth.user.signed_in) {
