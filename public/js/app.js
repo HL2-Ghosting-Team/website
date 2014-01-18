@@ -12,16 +12,14 @@ ghostingApp.config(['$routeProvider', '$locationProvider',
 
 		$routeProvider.
 			when('/', {
-				'templateUrl': '/static/partials/index.html',
-				'controller': 'IndexCtrl'
+				'templateUrl': '/static/partials/index.html'
 			}).
 			when('/logout', {
 				'templateUrl': '/static/partials/logout.html',
 				'controller': 'LogoutCtrl'
 			}).
 			otherwise({
-				'templateUrl': '/static/partials/not_found.html',
-				'controller': 'NotFoundCtrl'
+				'templateUrl': '/static/partials/not_found.html'
 			});
 	}
 ]);
