@@ -27,7 +27,7 @@
 		<script src="https://apis.google.com/js/client.js?onload=initialize"></script>
 	</head>
 	<body>
-		<div class="navbar navbar-inverse navbar-static-top" role="navigation">
+		<div class="navbar navbar-inverse navbar-static-top" role="navigation" ng-controller="HeaderCtrl">
 			<div class="container">
 				<div class="navbar-header">
 					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
@@ -40,16 +40,16 @@
 				</div>
 				<div class="collapse navbar-collapse">
 					<ul class="nav navbar-nav">
-						<li><a href="/">Home</a></li>
-						<li><a href="/runs">Runs</a></li>
+						<li ng-class="{active: isActive('/')}"><a href="/">Home</a></li>
+						<li ng-class="{active: isActive('/runs')}"><a href="/runs">Runs</a></li>
 					</ul>
 					<ul class="nav navbar-nav navbar-right ng-hide" ng-show="auth.user.signed_in">
 						<li class="dropdown">
 							<a href="#" class="dropdown-toggle" data-toggle="dropdown"><img alt="{{auth.user.email}}'s avatar" ng-src="{{auth.user.avatar}}&s=20" width="20" height="20"/>&nbsp;{{auth.user.nickname}}&nbsp;<b class="caret"></b></a>
 							<ul class="dropdown-menu">
-								<li><a ng-href="/user/{{auth.user.id}}"><span class="glyphicon glyphicon-user"></span>&nbsp;View&nbsp;profile</a></li>
+								<li ng-class="{active: isActive('/user/'+auth.user.id)}"><a ng-href="/user/{{auth.user.id}}"><span class="glyphicon glyphicon-user"></span>&nbsp;View&nbsp;profile</a></li>
 								<li class="divider"></li>
-								<li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span>&nbsp;Sign&nbsp;out</a></li>
+								<li ng-class="{active: isActive('/logout')}"><a href="/logout"><span class="glyphicon glyphicon-log-out"></span>&nbsp;Sign&nbsp;out</a></li>
 							</ul>
 						</li>
 					</ul>

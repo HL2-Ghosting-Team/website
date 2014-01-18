@@ -1,3 +1,5 @@
+"use strict";
+
 var ghostingApp = angular.module('ghostingApp', [
 	'ngRoute',
 	'ghostingControllers',
@@ -6,8 +8,6 @@ var ghostingApp = angular.module('ghostingApp', [
 
 ghostingApp.config(['$routeProvider', '$locationProvider',
 	function($routeProvider, $locationProvider) {
-		"use strict";
-
 		$locationProvider.html5Mode(true);
 
 		$routeProvider.
@@ -37,7 +37,13 @@ window.initialize = function() {
 		}
 	}
 	apisToLoad++;
-	gapi.client.load('ghosting', 'v0', callback, "/_ah/api");
+	if(location.host.toLowerCase().indexOf("localhost") == 0) {
+		gapi.client.load('ghosting', 'v0', callback, "/_ah/api");
+		console.log("Ghosting: Using local API.");
+	} else {
+		gapi.client.load('ghosting', 'v0', callback, "https://ghosting-website.appspot.com/_ah/api");
+		console.log("Ghosting: Using production API.");
+	}
 	apisToLoad++;
 	gapi.client.load('oauth2', 'v2', callback);
 

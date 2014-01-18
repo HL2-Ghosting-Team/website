@@ -1,3 +1,5 @@
+"use strict";
+
 var ghostingServices = angular.module('ghostingServices', []);
 
 ghostingServices.factory('GhostingAPI', function() {
@@ -10,39 +12,41 @@ var SCOPES = 'https://www.googleapis.com/auth/userinfo.email';
 
 var RESPONSE_TYPE = 'token id_token';
 
-ghostingServices.factory('Auth', ['$rootScope', function($rootScope) {
+ghostingServices.factory('Auth', [function() {
 	var library, authenticateCallback;
 	
-	authenticateCallback = function() {
-		library.checkAuthenticated();
-	};
-
-	var init = function() {
-		$rootScope.auth = library;
-		$rootScope.auth.loaded = false;
-		$rootScope.auth.user = {
-			'signed_in': false
-		};
-		library.authenticate(true);
+	authenticateCallback = function($scope) {
+		return function() {
+			return library.checkAuthenticated($scope);
+		}
 	};
 
 	library = {
-		'authenticate': function(immediate) {
+		'initialize': function($scope) {
+			$scope.auth = {
+				'user': {
+					'signed_in': false
+				},
+				'loaded': false
+			}
+			library.authenticate(true, $scope);
+		},
+		'authenticate': function(immediate, $scope) {
 			gapi.auth.authorize({
 				client_id: CLIENT_ID,
 				scope: SCOPES,
 				immediate: immediate,
 				response_type: RESPONSE_TYPE
-			}, authenticateCallback)
+			}, authenticateCallback($scope))
 		},
-		'checkAuthenticated': function() {
+		'checkAuthenticated': function($scope) {
 			gapi.client.ghosting.users.get({'user': 'current'}).execute(function(resp) {
 				if (!resp.code) {
 					var token = gapi.auth.getToken();
 					token.access_token = token.id_token;
 					gapi.auth.setToken(token);
 
-					$rootScope.auth.user = {
+					$scope.auth.user = {
 						'signed_in': true,
 
 						'id': resp.id,
@@ -50,30 +54,26 @@ ghostingServices.factory('Auth', ['$rootScope', function($rootScope) {
 						'avatar': resp.avatar,
 						'admin': resp.admin
 					};
-					$rootScope.auth.loaded = true;
-					$rootScope.$apply();
+					$scope.auth.loaded = true;
+					$scope.$apply();
 				} else {
-					$rootScope.auth.user = {
+					$scope.auth.user = {
 						'signed_in': false
 					};
-					$rootScope.auth.loaded = false;
-					$rootScope.$apply();
+					$scope.auth.loaded = false;
+					$scope.$apply();
 				}
 			});
 		},
-		'unauthenticate': function() {
+		'unauthenticate': function($scope) {
 			gapi.auth.setToken(null);
-			$rootScope.auth.user = {
+			$scope.auth.user = {
 				'signed_in': false
 			}
-			$rootScope.auth.loaded = true;
-			$rootScope.$apply();
+			$scope.auth.loaded = true;
+			$scope.$apply();
 		}
 	};
-
-	if($rootScope.auth == null) {
-		init();
-	}
 
 	return library;
 }]);

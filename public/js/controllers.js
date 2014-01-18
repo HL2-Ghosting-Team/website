@@ -1,14 +1,24 @@
+"use strict";
+
 var ghostingControllers = angular.module('ghostingControllers', ['ghostingServices']);
 
-ghostingControllers.controller('IndexCtrl', ['$scope', 'Auth', function($scope, Auth) {
+ghostingControllers.controller('HeaderCtrl', ['$scope', 'Auth', '$location', function($scope, Auth, $location) {
+	Auth.initialize($scope);
+
+	$scope.isActive = function (viewLocation) { 
+        return viewLocation === $location.path();
+    };
+}]);
+
+ghostingControllers.controller('IndexCtrl', ['$scope', function($scope) {
 	
 }]);
 
-ghostingControllers.controller('NotFoundCtrl', ['$scope', 'Auth', function($scope, Auth) {
+ghostingControllers.controller('NotFoundCtrl', ['$scope', function($scope) {
 	
 }]);
 
-ghostingControllers.controller('LogoutCtrl', ['$scope', 'Auth', '$location', function($scope, Auth, $location) {
+ghostingControllers.controller('LogoutCtrl', ['$scope', '$location', function($scope, $location) {
 	var takeAction = function() {
 		if($scope.auth.user.signed_in) {
 			Auth.unauthenticate();
