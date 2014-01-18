@@ -27,5 +27,5 @@ type User struct {
 }
 
 func (u *User) Avatar() string {
-	return gravatar.GetAvatarURL("https", gravatar.EmailHash(u.Email), gravatar.DefaultIdentIcon, gravatar.RatingPG).String()
+	return gravatar.GetAvatarURL("", gravatar.EmailHash(u.Email), gravatar.DefaultIdentIcon, gravatar.RatingPG).String()
 }

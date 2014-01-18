@@ -17,7 +17,6 @@ ghostingServices.factory('Auth', [function() {
 	
 	authenticateCallback = function($scope) {
 		return function() {
-			console.log("authenticateCallback", arguments);
 			return library.checkAuthenticated($scope);
 		}
 	};
